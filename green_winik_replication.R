@@ -27,7 +27,7 @@ t
 
 apply(cbind(age ,agesq ,female ,nonblack ,priorarr ,priordrugarr ,priorfelarr ,priorfeldrugarr ,priorcon ,priordrugcon ,priorfelcon ,priorfeldrugcon ,pwid ,dist ,marijuana ,cocaine ,crack ,heroin ,pcp ,otherdrug ,nondrug), 2, summary)
 apply(cbind(age ,agesq ,female ,nonblack ,priorarr ,priordrugarr ,priorfelarr ,priorfeldrugarr ,priorcon ,priordrugcon ,priorfelcon ,priorfeldrugcon ,pwid ,dist ,marijuana ,cocaine ,crack ,heroin ,pcp ,otherdrug ,nondrug), 2, sd)
-tapply( cbind(calendar, age ,agesq ,female ,nonblack ,priorarr ,priordrugarr ,priorfelarr ,priorfeldrugarr ,priorcon ,priordrugcon ,priorfelcon ,priorfeldrugcon ,pwid ,dist ,marijuana ,cocaine ,crack ,heroin ,pcp ,otherdrug ,nondrug), INDEX=as.factor(calendar), FUN=summary)
+tapply(cbind(calendar, age ,agesq ,female ,nonblack ,priorarr ,priordrugarr ,priorfelarr ,priorfeldrugarr ,priorcon ,priordrugcon ,priorfelcon ,priorfeldrugcon ,pwid ,dist ,marijuana ,cocaine ,crack ,heroin ,pcp ,otherdrug ,nondrug), INDEX=as.factor(calendar), FUN=summary)
 # The "tapply" line above (and below) isn't working on the matrix.  It will work for each variable inside the cbind() individually, however.
 
 # table 3 #/  ## summarizes more variables by calendar
@@ -58,7 +58,7 @@ regout <- lm( probat ~ calendar1 + calendar2 + calendar3 + calendar4 + calendar5
 summary(regout)
 
 # table 5 #/  ## instrumental variables estimation -- vector of calendar dummies are instruments; toserve and sometimes probat are endogenous explanatory variables, depending on specifications; robust standard errors are clustered on the clusterid var.  
-
+## error: unexpected symbol in "ivreg2 laterarr"
 ivreg2 laterarr (toserve = calendar1 calendar2 calendar3 calendar4 calendar5 calendar6 calendar7 calendar8 calendar9) if incjudge == 1, robust cluster(clusterid) level(90)
 ivreg2 laterarr age agesq female nonblack priorarr priordrugarr priorfelarr priorfeldrugarr priorcon priordrugcon priorfelcon priorfeldrugcon pwid dist marijuana cocaine crack heroin pcp otherdrug nondrug (toserve = calendar1 calendar2 calendar3 calendar4 calendar5 calendar6 calendar7 calendar8 calendar9) if incjudge == 1, robust cluster(clusterid) level(90)
 ivreg2 laterarr (probat = calendar1 calendar2 calendar3 calendar4 calendar5 calendar6 calendar7 calendar8 calendar9) if incjudge == 1, robust cluster(clusterid) level(90)
@@ -67,6 +67,7 @@ ivreg2 laterarr (toserve probat = calendar1 calendar2 calendar3 calendar4 calend
 ivreg2 laterarr age agesq female nonblack priorarr priordrugarr priorfelarr priorfeldrugarr priorcon priordrugcon priorfelcon priorfeldrugcon pwid dist marijuana cocaine crack heroin pcp otherdrug nondrug (toserve probat = calendar1 calendar2 calendar3 calendar4 calendar5 calendar6 calendar7 calendar8 calendar9) if incjudge == 1, robust cluster(clusterid) level(90)
 
 library(AER)
+library(MASS)
 # The "ivreg" function in the package "AER" does two-stage least squares (2SLS).  The same can be done using
 # the function "tsls" in the package "sem".
 ivout1 <- ivreg(laterarr ~ toserve | as.factor(calendar))
@@ -74,16 +75,19 @@ summary(ivout1)
 ivout2 <- ivreg(laterarr ~ age + agesq + female + nonblack + priorarr + priordrugarr + priorfelarr + priorfeldrugarr + priorcon + priordrugcon + priorfelcon + priorfeldrugcon + pwid + dist + marijuana + cocaine + crack + heroin + pcp + otherdrug + nondrug + probat | as.factor(calendar))
 summary(ivout2)
 ivout2
-# The model fits, but the summary() command fails.  Only the first 9 variables get a fitted coefficient, the rest recieve NA's.  
+# The model fits, but the summary() command fails.  Only the first 9 variables get a fitted coefficient, the rest recieve NA's.
+## warning: more regressors than instruments
 
 ivout3 <- ivreg(laterarr ~ probat | as.factor(calendar))
 summary(ivout3)
 ivout4 <- ivreg(laterarr ~ probat + age + agesq + female + nonblack + priorarr + priordrugarr + priorfelarr + priorfeldrugarr + priorcon + priordrugcon + priorfelcon + priorfeldrugcon + pwid + dist + marijuana + cocaine + crack + heroin + pcp + otherdrug + nondrug | as.factor(calendar))
 summary(ivout4)  # Doesn't work yet.
+## warning: more regressors than instruments
 ivout5 <- ivreg(laterarr ~ toserve + probat | as.factor(calendar))
 summary(ivout5)
 ivout6 <- ivreg(laterarr ~ toserve + probat + age + agesq + female + nonblack + priorarr + priordrugarr + priorfelarr + priorfeldrugarr + priorcon + priordrugcon + priorfelcon + priorfeldrugcon + pwid + dist + marijuana + cocaine + crack + heroin + pcp + otherdrug + nondrug | as.factor(calendar))
 summary(ivout6)  # Doesn't work yet.
+## warning: more regressors than instruments
 
 
 # table 6 #/  ## OLS regressions, with robust standard errors clustered on clusterid
@@ -96,7 +100,7 @@ regout <- rlm( laterarr ~ toserve + probat , data=X, subset=(incjudge == 1))
 regout <- rlm( laterarr ~ toserve + probat + age + agesq + female + nonblack + priorarr + priordrugarr + priorfelarr + priorfeldrugarr + priorcon + priordrugcon + priorfelcon + priorfeldrugcon + pwid + dist + marijuana + cocaine + crack + heroin + pcp + otherdrug + nondrug , data=X, subset=(incjudge == 1))
 
 # table 7 #/  ## instrumental variables estimation, estimated using limited information maximum likelihood, with robust standard errors clustered on clusterid var.
-
+## look into ivmodel package
 ivregress liml laterarr (toserve = calendar1 calendar2 calendar3 calendar4 calendar5 calendar6 calendar7 calendar8 calendar9) if incjudge == 1, robust cluster(clusterid) level(90)
 ivregress liml laterarr age agesq female nonblack priorarr priordrugarr priorfelarr priorfeldrugarr priorcon priordrugcon priorfelcon priorfeldrugcon pwid dist marijuana cocaine crack heroin pcp otherdrug nondrug (toserve = calendar1 calendar2 calendar3 calendar4 calendar5 calendar6 calendar7 calendar8 calendar9) if incjudge == 1, robust cluster(clusterid) level(90)
 ivregress liml laterarr (probat = calendar1 calendar2 calendar3 calendar4 calendar5 calendar6 calendar7 calendar8 calendar9) if incjudge == 1, robust cluster(clusterid) level(90)
@@ -124,12 +128,14 @@ regout <- rlm( laterarr ~ toserve + suspend + probat + probsuspend + age + agesq
 # generate censoring indicator #/
 fail<-rep(NA,nrow(X))
 fail <- 0
-fail[(fullreleasetorecid ! = NA)] <- 1
+fail[(fullreleasetorecid != NA)] <- 1
+## error: fullreleasetorecid not found
 
 # create a survival time variable that topcodes missing data #/
 failtime<-rep(NA,nrow(X))
 failtime <- lullreleasetorecid
 failtime[(failtime= = NA)] <- 1600
+## error: lullreleasetorecid not found
 
 # define survival data with topcode=1600 #/
 stset failtime, failure(fail)
