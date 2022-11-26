@@ -1,2 +1,4 @@
 # ignore data
 data/
+.Rproj.user
+green_winik_replication.Rproj
