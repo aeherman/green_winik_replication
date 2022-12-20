@@ -35,24 +35,22 @@ t
 
 #### table 2 ####
 #summarizes variables overall, and by calendar
-var_table <- cbind(age ,agesq ,female ,nonblack ,priorarr ,priordrugarr ,priorfelarr ,priorfeldrugarr ,priorcon ,priordrugcon ,priorfelcon ,priorfeldrugcon ,pwid ,dist ,marijuana ,cocaine ,crack ,heroin ,pcp ,otherdrug ,nondrug)
-apply(var_table, 2, sd)
-apply(var_table, 2, summary)[c(1,4,6),]
-X %>% select(calendar, colnames(var_table)) %>%
-    group_by(calendar) %>% summarize(across(colnames(var_table), ~signif(mean(.), 3))) %>% t %>%
+vars_2 <- cbind(age ,agesq ,female ,nonblack ,priorarr ,priordrugarr ,priorfelarr ,priorfeldrugarr ,priorcon ,priordrugcon ,priorfelcon ,priorfeldrugcon ,pwid ,dist ,marijuana ,cocaine ,crack ,heroin ,pcp ,otherdrug ,nondrug)
+apply(vars_2, 2, sd)
+apply(vars_2, 2, summary)[c(1,4,6),]
+X %>% select(calendar, colnames(vars_2)) %>%
+    group_by(calendar) %>% summarize(across(colnames(vars_2), ~signif(mean(.), 3))) %>% t %>%
     janitor::row_to_names(1, remove_rows_above = FALSE)
 
 #### table 3 ####
 # table 3 #/  ## summarizes more variables by calendar
-table_3 <- cbind(laterarr, incarcerate, toserve, probat, probatnonzero)
-X %>% select(calendar, colnames(table_3)) %>%
-    pivot_longer(cols = colnames(table_3), names_to = "variable", values_to = "value") %>%
-    group_by(variable, calendar) %>% summarize(across("value", list(min = min, mean = mean, max = max))) %>%
-    group_split()
-tapply(, INDEX=calendar, FUN=summary)
-### not working, arguments not same length
+vars_3 <- c("laterarr", "incarcerate", "toserve", "probat", "probatnonzero")
+X %>% select(calendar, all_of(vars_3)) %>%
+    group_by(calendar) %>% summarize(across(vars_3, ~signif(mean(.), 3))) %>% t %>%
+    janitor::row_to_names(1, remove_rows_above = FALSE)
 
-# table 4 #/  ## regressions and tests of linear hypotheses of outcomes on covariates with some different empirical specifications (all Ordinary Least Squares)
+#### table 4 ####
+## regressions and tests of linear hypotheses of outcomes on covariates with some different empirical specifications (all Ordinary Least Squares)
 
 regout <- lm( incarcerate ~ calendar1 + calendar2 + calendar3 + calendar4 + calendar5 + calendar7 + calendar8 + calendar9 , data=X, subset=(incjudge == 1))
 summary(regout)
