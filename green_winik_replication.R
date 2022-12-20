@@ -46,8 +46,12 @@ X %>% select(calendar, colnames(var_table)) %>%
 
 #### table 3 ####
 # table 3 #/  ## summarizes more variables by calendar
-
-tapply( cbind(laterarr ,incarcerate ,toserve ,probat ,probatnonzero), INDEX=calendar, FUN=summary)
+table_3 <- cbind(laterarr, incarcerate, toserve, probat, probatnonzero)
+X %>% select(calendar, colnames(table_3)) %>%
+    pivot_longer(cols = colnames(table_3), names_to = "variable", values_to = "value") %>%
+    group_by(variable, calendar) %>% summarize(across("value", list(min = min, mean = mean, max = max))) %>%
+    group_split()
+tapply(, INDEX=calendar, FUN=summary)
 ### not working, arguments not same length
 
 # table 4 #/  ## regressions and tests of linear hypotheses of outcomes on covariates with some different empirical specifications (all Ordinary Least Squares)
