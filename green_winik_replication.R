@@ -39,10 +39,8 @@ var_table <- cbind(age ,agesq ,female ,nonblack ,priorarr ,priordrugarr ,priorfe
 apply(var_table, 2, sd)
 apply(var_table, 2, summary)[c(1,4,6),]
 X %>% select(calendar, colnames(var_table)) %>%
-    pivot_longer(cols = colnames(var_table), names_to = "variable", values_to = "value") %>%
-    group_by(variable, calendar) %>% summarize(across("value", list(min = min, mean = mean, max = max))) %>%
-    group_split()
-# The "tapply" line above (and below) isn't working on the matrix.  It will work for each variable inside the cbind() individually, however.
+    group_by(calendar) %>% summarize(across(colnames(var_table), ~signif(mean(.), 3))) %>% t %>%
+    janitor::row_to_names(1, remove_rows_above = FALSE)
 
 #### table 3 ####
 # table 3 #/  ## summarizes more variables by calendar
