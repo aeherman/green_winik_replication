@@ -42,6 +42,15 @@ X %>% select(calendar, colnames(vars_2)) %>%
     group_by(calendar) %>% summarize(across(colnames(vars_2), ~signif(mean(.), 3))) %>% t %>%
     janitor::row_to_names(1, remove_rows_above = FALSE)
 
+#with(X, do.call(rbind, tapply(age, calendar, function(x) c(M = mean(x), SD = sd(x)))))
+# tmp is the distribution for the null hypothesis: https://stackoverflow.com/questions/36763010/retrieving-the-monte-carlo-simulation-values-for-chi-square-test
+lapply(setNames(colnames(vars_2), colnames(vars_2)), function(var) {
+    reg <- nnet::multinom(formula(glue::glue("calendar ~ {var}")), data = X)
+    chi <- chisq.test(X %>% select(calendar, all_of(var)), simulate.p.value = T, B=1000)$p.value
+    return(list(reg = reg, chi = chi))
+})
+
+
 #### table 3 ####
 # table 3 #/  ## summarizes more variables by calendar
 vars_3 <- c("laterarr", "incarcerate", "toserve", "probat", "probatnonzero")
