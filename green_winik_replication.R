@@ -44,12 +44,14 @@ X %>% select(calendar, colnames(vars_2)) %>%
 
 #with(X, do.call(rbind, tapply(age, calendar, function(x) c(M = mean(x), SD = sd(x)))))
 # tmp is the distribution for the null hypothesis: https://stackoverflow.com/questions/36763010/retrieving-the-monte-carlo-simulation-values-for-chi-square-test
-lapply(setNames(colnames(vars_2), colnames(vars_2)), function(var) {
+# missing the p-value for the reg
+table_2_reg <- lapply(setNames(colnames(vars_2), colnames(vars_2)), function(var) {
     reg <- nnet::multinom(formula(glue::glue("calendar ~ {var}")), data = X)
     chi <- chisq.test(X %>% select(calendar, all_of(var)), simulate.p.value = T, B=1000)$p.value
     return(list(reg = reg, chi = chi))
 })
-
+lapply(table_2_reg, function(var) var$chi)
+# age, agesq, nonblack, check dist. later
 
 #### table 3 ####
 # table 3 #/  ## summarizes more variables by calendar
