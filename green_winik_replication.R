@@ -1,5 +1,6 @@
 # read in data
 library(tidyverse)
+library(AER)
 X <- readr::read_csv("data/green_winik_data.csv")
 attach(X)
 N <- nrow(X)
@@ -51,6 +52,8 @@ table_2_reg <- lapply(setNames(colnames(vars_2), colnames(vars_2)), function(var
     return(list(reg = reg, chi = chi))
 })
 lapply(table_2_reg, function(var) var$chi)
+
+chisq.test(X %>% select(agesq), simulate.p.value = T, B = 1000)$p.value
 # age, agesq, nonblack, check dist. later
 
 #### table 3 ####
@@ -85,36 +88,30 @@ summary(regout)
 
 # table 5 #/  ## instrumental variables estimation -- vector of calendar dummies are instruments; toserve and sometimes probat are endogenous explanatory variables, depending on specifications; robust standard errors are clustered on the clusterid var.  
 ## error: unexpected symbol in "ivreg2 laterarr"
-ivreg2 laterarr (toserve = calendar1 calendar2 calendar3 calendar4 calendar5 calendar6 calendar7 calendar8 calendar9) if incjudge == 1, robust cluster(clusterid) level(90)
-ivreg2 laterarr age agesq female nonblack priorarr priordrugarr priorfelarr priorfeldrugarr priorcon priordrugcon priorfelcon priorfeldrugcon pwid dist marijuana cocaine crack heroin pcp otherdrug nondrug (toserve = calendar1 calendar2 calendar3 calendar4 calendar5 calendar6 calendar7 calendar8 calendar9) if incjudge == 1, robust cluster(clusterid) level(90)
-ivreg2 laterarr (probat = calendar1 calendar2 calendar3 calendar4 calendar5 calendar6 calendar7 calendar8 calendar9) if incjudge == 1, robust cluster(clusterid) level(90)
-ivreg2 laterarr age agesq female nonblack priorarr priordrugarr priorfelarr priorfeldrugarr priorcon priordrugcon priorfelcon priorfeldrugcon pwid dist marijuana cocaine crack heroin pcp otherdrug nondrug (probat = calendar1 calendar2 calendar3 calendar4 calendar5 calendar6 calendar7 calendar8 calendar9) if incjudge == 1, robust cluster(clusterid) level(90)
-ivreg2 laterarr (toserve probat = calendar1 calendar2 calendar3 calendar4 calendar5 calendar6 calendar7 calendar8 calendar9) if incjudge == 1, robust cluster(clusterid) level(90)
-ivreg2 laterarr age agesq female nonblack priorarr priordrugarr priorfelarr priorfeldrugarr priorcon priordrugcon priorfelcon priorfeldrugcon pwid dist marijuana cocaine crack heroin pcp otherdrug nondrug (toserve probat = calendar1 calendar2 calendar3 calendar4 calendar5 calendar6 calendar7 calendar8 calendar9) if incjudge == 1, robust cluster(clusterid) level(90)
 
-library(AER)
-library(MASS)
-# The "ivreg" function in the package "AER" does two-stage least squares (2SLS).  The same can be done using
-# the function "tsls" in the package "sem".
-ivout1 <- ivreg(laterarr ~ toserve | as.factor(calendar))
-summary(ivout1)
-ivout2 <- ivreg(laterarr ~ age + agesq + female + nonblack + priorarr + priordrugarr + priorfelarr + priorfeldrugarr + priorcon + priordrugcon + priorfelcon + priorfeldrugcon + pwid + dist + marijuana + cocaine + crack + heroin + pcp + otherdrug + nondrug + probat | as.factor(calendar))
-summary(ivout2)
-ivout2
-# The model fits, but the summary() command fails.  Only the first 9 variables get a fitted coefficient, the rest recieve NA's.
-## warning: more regressors than instruments
+calendars <- paste0('calendar', 1:9, collapse = ' + ')
+covariates <- paste(colnames(vars_2), collapse = ' + ')
+formulas <- c("toserve + suspend + probat", "toserve", "suspend", "probat")
 
-ivout3 <- ivreg(laterarr ~ probat | as.factor(calendar))
-summary(ivout3)
-ivout4 <- ivreg(laterarr ~ probat + age + agesq + female + nonblack + priorarr + priordrugarr + priorfelarr + priorfeldrugarr + priorcon + priordrugcon + priorfelcon + priorfeldrugcon + pwid + dist + marijuana + cocaine + crack + heroin + pcp + otherdrug + nondrug | as.factor(calendar))
-summary(ivout4)  # Doesn't work yet.
-## warning: more regressors than instruments
-ivout5 <- ivreg(laterarr ~ toserve + probat | as.factor(calendar))
-summary(ivout5)
-ivout6 <- ivreg(laterarr ~ toserve + probat + age + agesq + female + nonblack + priorarr + priordrugarr + priorfelarr + priorfeldrugarr + priorcon + priordrugcon + priorfelcon + priorfeldrugcon + pwid + dist + marijuana + cocaine + crack + heroin + pcp + otherdrug + nondrug | as.factor(calendar))
-summary(ivout6)  # Doesn't work yet.
-## warning: more regressors than instruments
+ivregs <- lapply(setNames(formulas, formulas),
+                 function(x) {
+    
+    plm_plain <- plm(formula(glue::glue("laterarr ~ {x} | {calendars}")),
+                     data = X, model = "pooling", subset = incjudge == 1, index = c("clusterid"))
+    
+    plm_cov <- plm(formula(glue::glue("laterarr ~ {x} + {covariates} | {covariates} + {calendars}")),
+                   data = X, model = "pooling", subset = incjudge == 1, index = c("clusterid"))
+    
+    cse <- lapply(setNames(list(plm_plain, plm_cov), c("wo_cov", "cov")), function(reg) {
+        out <- coeftest(reg, vcov=vcovHC(reg, type="sss", cluster="group"))
+        return(out)
+        # doesn't have F statistic right now
+    })
+    
+    return(list(wo_cov = summary(plm_plain), cov = summary(plm_cov), cse = cse))
+})
 
+ivregs
 
 # table 6 #/  ## OLS regressions, with robust standard errors clustered on clusterid
 
