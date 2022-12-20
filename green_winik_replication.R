@@ -1,21 +1,31 @@
 # read in data
+library(tidyverse)
 X <- readr::read_csv("data/green_winik_data.csv")
 attach(X)
-# table 1 #/     ## recodes variables and tabulates probation level by prison level
+N <- nrow(X)
+#### table 1 ####
+#recodes variables and tabulates probation level by prison level
 
 probatlevel <-rep(NA,nrow(X)) 
-probatlevel [( incjudge == 1 )] <- 0
+# incjudge: indicator judge to be included in analysis
+probatlevel[(incjudge == 1)] <- 0
+# probat: probationary period in months
 probatlevel[((probat > 0 & probat <= 12 & incjudge == 1))] <- 1
 probatlevel[((probat > 12 & probat <= 24 & incjudge == 1))] <- 2
 probatlevel[((probat > 24 & probat <= 36 & incjudge == 1))] <- 3
 probatlevel[((probat > 36 & incjudge == 1))] <- 4
 
-prisonlevel <-rep(NA,nrow(X)) 
-prisonlevel[( incjudge == 1 )] <- 0
+table(probatlevel)/N
+
+prisonlevel <-rep(NA,nrow(X))
+prisonlevel[(incjudge == 1)] <- 0
+# toserve: Non-suspended period of incarceration, in months
 prisonlevel[((toserve > 0 & toserve <= 12 & incjudge == 1))] <- 1
 prisonlevel[((toserve > 12 & toserve <= 24 & incjudge == 1))] <- 2
 prisonlevel[((toserve > 24 & toserve <= 36 & incjudge == 1))] <- 3
 prisonlevel[((toserve > 36 & incjudge == 1))] <- 4
+
+table(prisonlevel)/N
 
 # Table 1:
 t = table(probatlevel,prisonlevel)
@@ -23,13 +33,18 @@ t = cbind(t, apply(t, 1, sum))
 t = rbind(t, apply(t, 2, sum))
 t
 
-# table 2 #/  ## summarizes variables overall, and by calendar
-
-apply(cbind(age ,agesq ,female ,nonblack ,priorarr ,priordrugarr ,priorfelarr ,priorfeldrugarr ,priorcon ,priordrugcon ,priorfelcon ,priorfeldrugcon ,pwid ,dist ,marijuana ,cocaine ,crack ,heroin ,pcp ,otherdrug ,nondrug), 2, summary)
-apply(cbind(age ,agesq ,female ,nonblack ,priorarr ,priordrugarr ,priorfelarr ,priorfeldrugarr ,priorcon ,priordrugcon ,priorfelcon ,priorfeldrugcon ,pwid ,dist ,marijuana ,cocaine ,crack ,heroin ,pcp ,otherdrug ,nondrug), 2, sd)
-tapply(cbind(calendar, age ,agesq ,female ,nonblack ,priorarr ,priordrugarr ,priorfelarr ,priorfeldrugarr ,priorcon ,priordrugcon ,priorfelcon ,priorfeldrugcon ,pwid ,dist ,marijuana ,cocaine ,crack ,heroin ,pcp ,otherdrug ,nondrug), INDEX=as.factor(calendar), FUN=summary)
+#### table 2 ####
+#summarizes variables overall, and by calendar
+var_table <- cbind(age ,agesq ,female ,nonblack ,priorarr ,priordrugarr ,priorfelarr ,priorfeldrugarr ,priorcon ,priordrugcon ,priorfelcon ,priorfeldrugcon ,pwid ,dist ,marijuana ,cocaine ,crack ,heroin ,pcp ,otherdrug ,nondrug)
+apply(var_table, 2, sd)
+apply(var_table, 2, summary)[c(1,4,6),]
+X %>% select(calendar, colnames(var_table)) %>%
+    pivot_longer(cols = colnames(var_table), names_to = "variable", values_to = "value") %>%
+    group_by(variable, calendar) %>% summarize(across("value", list(min = min, mean = mean, max = max))) %>%
+    group_split()
 # The "tapply" line above (and below) isn't working on the matrix.  It will work for each variable inside the cbind() individually, however.
 
+#### table 3 ####
 # table 3 #/  ## summarizes more variables by calendar
 
 tapply( cbind(laterarr ,incarcerate ,toserve ,probat ,probatnonzero), INDEX=calendar, FUN=summary)
