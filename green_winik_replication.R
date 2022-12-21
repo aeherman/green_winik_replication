@@ -1,6 +1,7 @@
 # read in data
 library(tidyverse)
 library(AER)
+library(ivmodel)
 X <- readr::read_csv("data/green_winik_data.csv")
 attach(X)
 N <- nrow(X)
@@ -90,28 +91,29 @@ summary(regout)
 ## error: unexpected symbol in "ivreg2 laterarr"
 
 calendars <- paste0('calendar', 1:9, collapse = ' + ')
+# calendars are confounded with length of sentence, which can't be randomly assigned, but calendar only affects y through x
+# adding the covariates checks the assumptions?
 covariates <- paste(colnames(vars_2), collapse = ' + ')
 formulas <- c("toserve + suspend + probat", "toserve", "suspend", "probat")
-
+#ivmodel better?
 ivregs <- lapply(setNames(formulas, formulas),
                  function(x) {
     
-    plm_plain <- plm(formula(glue::glue("laterarr ~ {x} | {calendars}")),
+    plm <- plm(formula(glue::glue("laterarr ~ {x} | {calendars}")),
                      data = X, model = "pooling", subset = incjudge == 1, index = c("clusterid"))
     
     plm_cov <- plm(formula(glue::glue("laterarr ~ {x} + {covariates} | {covariates} + {calendars}")),
                    data = X, model = "pooling", subset = incjudge == 1, index = c("clusterid"))
     
-    cse <- lapply(setNames(list(plm_plain, plm_cov), c("wo_cov", "cov")), function(reg) {
-        out <- coeftest(reg, vcov=vcovHC(reg, type="sss", cluster="group"))
-        return(out)
-        # doesn't have F statistic right now
-    })
+   cse <- coeftest(plm, vcov=vcovHC(plm, type="sss", cluster="group"))
+   # doesn't have F statistic right now
+   # no cse on plm_cov
     
-    return(list(wo_cov = summary(plm_plain), cov = summary(plm_cov), cse = cse))
+    return(list(plm = summary(plm), #plm_cov = summary(plm_cov),
+                cse = cse))
 })
 
-ivregs
+ivregs # no covariates
 
 # table 6 #/  ## OLS regressions, with robust standard errors clustered on clusterid
 
@@ -124,6 +126,30 @@ regout <- rlm( laterarr ~ toserve + probat + age + agesq + female + nonblack + p
 
 # table 7 #/  ## instrumental variables estimation, estimated using limited information maximum likelihood, with robust standard errors clustered on clusterid var.
 ## look into ivmodel package
+
+ivregress <- function(endogenous, outcome = laterarr){
+    # X must be attached
+    # only one endogenous variable
+    lapply(endogenous, function(en) {
+        outreg <- ivmodel(Y = outcome,
+                          D = X[[en]],
+                          Z = as.factor(calendar),
+                          X = vars_2,
+                          k = 1, # 2SLS
+                          manyweakSE = T,
+                          clusterID = clusterid)
+        selection <- lapply(c("LIML", "kClass"), function(element) {
+            do.call(bind_cols, c(regression = element,
+                                 endogenous = en,
+                                 lapply(outreg[[element]][1:5], as.vector)))
+        })
+    
+    }) %>% reduce(bind_rows)
+}
+endogenous <- c("probat", "toserve", "incarcerate", "probatnonzero")
+table7 <- ivregress(endogenous)
+table7 <- ivregress(endogenous, outcome = laterfelcon)
+
 ivregress liml laterarr (toserve = calendar1 calendar2 calendar3 calendar4 calendar5 calendar6 calendar7 calendar8 calendar9) if incjudge == 1, robust cluster(clusterid) level(90)
 ivregress liml laterarr age agesq female nonblack priorarr priordrugarr priorfelarr priorfeldrugarr priorcon priordrugcon priorfelcon priorfeldrugcon pwid dist marijuana cocaine crack heroin pcp otherdrug nondrug (toserve = calendar1 calendar2 calendar3 calendar4 calendar5 calendar6 calendar7 calendar8 calendar9) if incjudge == 1, robust cluster(clusterid) level(90)
 ivregress liml laterarr (probat = calendar1 calendar2 calendar3 calendar4 calendar5 calendar6 calendar7 calendar8 calendar9) if incjudge == 1, robust cluster(clusterid) level(90)
