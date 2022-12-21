@@ -36,7 +36,7 @@ t = rbind(t, apply(t, 2, sum))
 t
 
 #### table 2 ####
-#summarizes variables overall, and by calendar
+#summarizes exogenous variables overall, and by calendar
 vars_2 <- cbind(age ,agesq ,female ,nonblack ,priorarr ,priordrugarr ,priorfelarr ,priorfeldrugarr ,priorcon ,priordrugcon ,priorfelcon ,priorfeldrugcon ,pwid ,dist ,marijuana ,cocaine ,crack ,heroin ,pcp ,otherdrug ,nondrug)
 apply(vars_2, 2, sd)
 apply(vars_2, 2, summary)[c(1,4,6),]
@@ -58,11 +58,12 @@ chisq.test(X %>% select(agesq), simulate.p.value = T, B = 1000)$p.value
 # age, agesq, nonblack, check dist. later
 
 #### table 3 ####
-# table 3 #/  ## summarizes more variables by calendar
+# table 3 #/  ## summarizes endogenous variables by calendar
 vars_3 <- c("laterarr", "incarcerate", "toserve", "probat", "probatnonzero")
-X %>% select(calendar, all_of(vars_3)) %>%
+table3 <- X %>% select(calendar, all_of(vars_3)) %>%
     group_by(calendar) %>% summarize(across(vars_3, ~signif(mean(.), 3))) %>% t %>%
     janitor::row_to_names(1, remove_rows_above = FALSE)
+table3
 
 #### table 4 ####
 ## regressions and tests of linear hypotheses of outcomes on covariates with some different empirical specifications (all Ordinary Least Squares)
