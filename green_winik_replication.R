@@ -37,17 +37,17 @@ t
 
 #### table 2 ####
 #summarizes exogenous variables overall, and by calendar
-vars_2 <- cbind(age ,agesq ,female ,nonblack ,priorarr ,priordrugarr ,priorfelarr ,priorfeldrugarr ,priorcon ,priordrugcon ,priorfelcon ,priorfeldrugcon ,pwid ,dist ,marijuana ,cocaine ,crack ,heroin ,pcp ,otherdrug ,nondrug)
-apply(vars_2, 2, sd)
-apply(vars_2, 2, summary)[c(1,4,6),]
-X %>% select(calendar, colnames(vars_2)) %>%
-    group_by(calendar) %>% summarize(across(colnames(vars_2), ~signif(mean(.), 3))) %>% t %>%
+exogenous <- cbind(age ,agesq ,female ,nonblack ,priorarr ,priordrugarr ,priorfelarr ,priorfeldrugarr ,priorcon ,priordrugcon ,priorfelcon ,priorfeldrugcon ,pwid ,dist ,marijuana ,cocaine ,crack ,heroin ,pcp ,otherdrug ,nondrug)
+apply(exogenous, 2, sd)
+apply(exogenous, 2, summary)[c(1,4,6),]
+X %>% select(calendar, colnames(exogenous)) %>%
+    group_by(calendar) %>% summarize(across(colnames(exogenous), ~signif(mean(.), 3))) %>% t %>%
     janitor::row_to_names(1, remove_rows_above = FALSE)
 
 #with(X, do.call(rbind, tapply(age, calendar, function(x) c(M = mean(x), SD = sd(x)))))
 # tmp is the distribution for the null hypothesis: https://stackoverflow.com/questions/36763010/retrieving-the-monte-carlo-simulation-values-for-chi-square-test
 # missing the p-value for the reg
-table_2_reg <- lapply(setNames(colnames(vars_2), colnames(vars_2)), function(var) {
+table_2_reg <- lapply(setNames(colnames(exogenous), colnames(exogenous)), function(var) {
     reg <- nnet::multinom(formula(glue::glue("calendar ~ {var}")), data = X)
     chi <- chisq.test(X %>% select(calendar, all_of(var)), simulate.p.value = T, B=1000)$p.value
     return(list(reg = reg, chi = chi))
@@ -59,11 +59,33 @@ chisq.test(X %>% select(agesq), simulate.p.value = T, B = 1000)$p.value
 
 #### table 3 ####
 # table 3 #/  ## summarizes endogenous variables by calendar
-vars_3 <- c("laterarr", "incarcerate", "toserve", "probat", "probatnonzero")
-table3 <- X %>% select(calendar, all_of(vars_3)) %>%
-    group_by(calendar) %>% summarize(across(vars_3, ~signif(mean(.), 3))) %>% t %>%
+endogenous <- c("laterarr", "incarcerate", "toserve", "probat", "probatnonzero")
+table3 <- X %>% select(calendar, all_of(endogenous)) %>%
+    group_by(calendar) %>% summarize(across(all_of(endogenous), ~signif(mean(.), 3))) %>% t %>%
     janitor::row_to_names(1, remove_rows_above = FALSE)
 table3
+
+with(X, do.call(cbind, tapply(toserve, calendar, function(x) c(M = mean(x), SD = sd(x)))))
+
+group_by(X, calendar) %>% summarize(M = mean(toserve), SD = sd(toserve))
+
+
+X %>% #group_by(calendar) %>% count(toserve) %>%
+  ggplot(aes(x = toserve, fill = calendar, group = calendar)) + geom_histogram() +
+  facet_grid(calendar ~ .)
+
+X %>% filter(toserve > 0) %>% group_by(calendar) %>%
+  mutate(mean = mean(toserve)) %>% ungroup %>%
+  group_by(calendar) %>% arrange(mean) %>%
+  ggplot(aes(x = toserve, y = as.factor(mean), fill = as.factor(calendar), group = calendar)) +
+  ggridges::geom_density_ridges(scale = 2, alpha = 0.80, quantile_lines = T, quantile_fun = mean)
+  
+
+ggplot(X %>% filter(toserve > 0),
+       aes(x = toserve, y = as.factor(calendar), fill = as.factor(calendar)), group = calendar) +
+  ggridges::geom_density_ridges(scale = 2, alpha = 0.80, panel_scaling = TRUE,
+                                quantile_lines = T, quantile_fun = mean) +
+  ylab(NULL) + xlab(NULL) + scale_fill_discrete(NULL)
 
 #### table 4 ####
 ## regressions and tests of linear hypotheses of outcomes on covariates with some different empirical specifications (all Ordinary Least Squares)
@@ -94,7 +116,7 @@ summary(regout)
 calendars <- paste0('calendar', 1:9, collapse = ' + ')
 # calendars are confounded with length of sentence, which can't be randomly assigned, but calendar only affects y through x
 # adding the covariates checks the assumptions?
-covariates <- paste(colnames(vars_2), collapse = ' + ')
+covariates <- paste(colnames(exogenous), collapse = ' + ')
 formulas <- c("toserve + suspend + probat", "toserve", "suspend", "probat")
 #ivmodel better?
 ivregs <- lapply(setNames(formulas, formulas),
@@ -135,7 +157,7 @@ ivregress <- function(endogenous, outcome = laterarr){
         outreg <- ivmodel(Y = outcome,
                           D = X[[en]],
                           Z = as.factor(calendar),
-                          X = vars_2,
+                          X = exogenous,
                           k = 1, # 2SLS
                           manyweakSE = T,
                           clusterID = clusterid)
