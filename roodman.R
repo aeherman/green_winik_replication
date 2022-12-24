@@ -55,8 +55,12 @@ after-before
 
 
 regressed %>% ggplot() +
-  geom_path(aes(x = end, y = point.est,
-                size = point.est + 1.960*4*std.err),
-            alpha = .5, color = "lightgreen") +
+  geom_ribbon(aes(x = end,
+                  ymin = point.est - 1.96*std.err,
+                  ymax = point.est + 1.96*std.err),
+            alpha = .5, fill = "lightgreen") +
   geom_line(aes(x = end, y = point.est), color = "darkgreen") +
   geom_hline(aes(yintercept = 0))
+
+date <- str_replace_all(Sys.Date(), pattern = "-", replacement = "_")
+saveRDS(regressed, file = glue::glue("data/replicated/vary_range_any_arrest_{date}.rds"))
