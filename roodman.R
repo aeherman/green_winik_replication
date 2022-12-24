@@ -1,9 +1,4 @@
-library(tidyverse)
-library(AER)
-library(ivmodel)
-X <- readr::read_csv("data/green_winik_data.csv")
-attach(X)
-N <- nrow(X)
+source("start_up.R")
 
 # varied end dates for measuring follow-up period
 end <- sort(rep(seq(2, 365*4, 1), N))
@@ -35,11 +30,13 @@ listed <- expanded %>% group_by(end) %>% group_split
 library(doParallel)
 registerDoParallel(16)
 
+before <- Sys.time()
 out <- map2(.x = listed[(change_index$end - 1)], # unique versions of the data given the above
      .y = change_index$n, # keep track of how many days the cumulative laterarr2 remains the same
      .f = function(x, n) {
   outreg <- with(x, liml(Y = laterarr2, D = toserve, Z = as.factor(calendar),
                          # consider adding in the exogenous variables with D
+                         X = exogenous,
                          k = 1,
                          manyweakSE = T, clusterID = clusterid))
   do.call(bind_cols, lapply(outreg[1:5], as.vector)) %>%
@@ -59,6 +56,10 @@ regressed %>% ggplot() +
                   ymin = point.est - 1.96*std.err,
                   ymax = point.est + 1.96*std.err),
             alpha = .5, fill = "lightgreen") +
+  geom_ribbon(aes(x = end,
+                  ymin = point.est - std.err,
+                  ymax = point.est + std.err),
+              alpha = .6, fill = "green") +
   geom_line(aes(x = end, y = point.est), color = "darkgreen") +
   geom_hline(aes(yintercept = 0))
 
