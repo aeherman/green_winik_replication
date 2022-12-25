@@ -1,10 +1,5 @@
 # read in data
-library(tidyverse)
-library(AER)
-library(ivmodel)
-X <- readr::read_csv("data/green_winik_data.csv")
-attach(X)
-N <- nrow(X)
+source("start_up.R")
 #### table 1 ####
 #recodes variables and tabulates probation level by prison level
 
@@ -54,7 +49,7 @@ table_2_reg <- lapply(setNames(colnames(exogenous), colnames(exogenous)), functi
 })
 lapply(table_2_reg, function(var) var$chi)
 
-chisq.test(X %>% select(agesq), simulate.p.value = T, B = 1000)$p.value
+#chisq.test(X %>% select(agesq), simulate.p.value = T, B = 1000)$p.value
 # age, agesq, nonblack, check dist. later
 
 #### table 3 ####
@@ -77,6 +72,7 @@ X %>% #group_by(calendar) %>% count(toserve) %>%
 X %>% filter(toserve > 0) %>% group_by(calendar) %>%
   mutate(mean = mean(toserve)) %>% ungroup %>%
   group_by(calendar) %>% arrange(mean) %>%
+  filter(toserve < 50) %>%
   ggplot(aes(x = toserve, y = as.factor(mean), fill = as.factor(calendar), group = calendar)) +
   ggridges::geom_density_ridges(scale = 2, alpha = 0.80, quantile_lines = T, quantile_fun = mean)
   
@@ -89,26 +85,28 @@ ggplot(X %>% filter(toserve > 0),
 
 #### table 4 ####
 ## regressions and tests of linear hypotheses of outcomes on covariates with some different empirical specifications (all Ordinary Least Squares)
+covariates <- paste(colnames(exogenous), collapse = ' + ')
 
-regout <- lm( incarcerate ~ calendar1 + calendar2 + calendar3 + calendar4 + calendar5 + calendar7 + calendar8 + calendar9 , data=X, subset=(incjudge == 1))
-summary(regout)
-regout <- lm( incarcerate ~ calendar1 + calendar2 + calendar3 + calendar4 + calendar5 + calendar7 + calendar8 + calendar9 + age + agesq + female + nonblack + priorarr + priordrugarr + priorfelarr + priorfeldrugarr + priorcon + priordrugcon + priorfelcon + priorfeldrugcon + pwid + dist + marijuana + cocaine + crack + heroin + pcp + otherdrug + nondrug , data=X, subset=(incjudge == 1))
-summary(regout)
 
-regout <- lm( toserve ~ calendar1 + calendar2 + calendar3 + calendar4 + calendar5 + calendar7 + calendar8 + calendar9 , data=X, subset=(incjudge == 1))
-summary(regout)
-regout <- lm( toserve ~ calendar1 + calendar2 + calendar3 + calendar4 + calendar5 + calendar7 + calendar8 + calendar9 + age + agesq + female + nonblack + priorarr + priordrugarr + priorfelarr + priorfeldrugarr + priorcon + priordrugcon + priorfelcon + priorfeldrugcon + pwid + dist + marijuana + cocaine + crack + heroin + pcp + otherdrug + nondrug , data=X, subset=(incjudge == 1))
-summary(regout)
+ftest <- function(x, cov = NULL, d = subset(X, incjudge == 1)) {
+  form <- glue::glue("{x} ~ as.factor(calendar)")
+  hascov <- "no"
+  
+  if(!is.null(cov)) {
+    form <- glue::glue("{form} + {cov}")
+    hascov <- "yes"
+  }
+  
+  f <- summary(lm(formula(form), data = d))$fstatistic
+  p <- pf(f[1], f[2], f[3], lower.tail = F)
+  
+  return(c(depvar = x, hascov = hascov, signif(f, 4), pvalue = signif(p, 4)))
+}
 
-regout <- lm( probatnonzero ~ calendar1 + calendar2 + calendar3 + calendar4 + calendar5 + calendar7 + calendar8 + calendar9 , data=X, subset=(incjudge == 1))
-summary(regout)
-regout <- lm( probatnonzero ~ calendar1 + calendar2 + calendar3 + calendar4 + calendar5 + calendar7 + calendar8 + calendar9 + age + agesq + female + nonblack + priorarr + priordrugarr + priorfelarr + priorfeldrugarr + priorcon + priordrugcon + priorfelcon + priorfeldrugcon + pwid + dist + marijuana + cocaine + crack + heroin + pcp + otherdrug + nondrug , data=X, subset=(incjudge == 1))
-summary(regout)
-
-regout <- lm( probat ~ calendar1 + calendar2 + calendar3 + calendar4 + calendar5 + calendar7 + calendar8 + calendar9 , data=X, subset=(incjudge == 1))
-summary(regout)
-regout <- lm( probat ~ calendar1 + calendar2 + calendar3 + calendar4 + calendar5 + calendar7 + calendar8 + calendar9 + age + agesq + female + nonblack + priorarr + priordrugarr + priorfelarr + priorfeldrugarr + priorcon + priordrugcon + priorfelcon + priorfeldrugcon + pwid + dist + marijuana + cocaine + crack + heroin + pcp + otherdrug + nondrug , data=X, subset=(incjudge == 1))
-summary(regout)
+table4 <- bind_rows(lapply(c("incarcerate", "toserve", "probatnonzero", "probat"), function(x) ftest(x)),
+          lapply(c("incarcerate", "toserve", "probatnonzero", "probat"), function(x) ftest(x, cov = covariates)))
+table4
+# weak instrument
 
 # table 5 #/  ## instrumental variables estimation -- vector of calendar dummies are instruments; toserve and sometimes probat are endogenous explanatory variables, depending on specifications; robust standard errors are clustered on the clusterid var.  
 ## error: unexpected symbol in "ivreg2 laterarr"
@@ -117,18 +115,20 @@ calendars <- paste0('calendar', 1:9, collapse = ' + ')
 # calendars are confounded with length of sentence, which can't be randomly assigned, but calendar only affects y through x
 # adding the covariates checks the assumptions?
 covariates <- paste(colnames(exogenous), collapse = ' + ')
-formulas <- c("toserve + suspend + probat", "toserve", "suspend", "probat")
+formulas <- c("toserve + suspend + probat", "toserve", "suspend", "probat", "incarcerate", "release")
 #ivmodel better?
 ivregs <- lapply(setNames(formulas, formulas),
                  function(x) {
+                   
+    form <- glue::glue("laterarr ~ {x} | {calendars}")
     
-    plm <- plm(formula(glue::glue("laterarr ~ {x} | {calendars}")),
-                     data = X, model = "pooling", subset = incjudge == 1, index = c("clusterid"))
+    plm_fit <- plm(formula(form), data = X, model = "pooling",
+               subset = incjudge == 1, index = c("clusterid"))
     
     plm_cov <- plm(formula(glue::glue("laterarr ~ {x} + {covariates} | {covariates} + {calendars}")),
                    data = X, model = "pooling", subset = incjudge == 1, index = c("clusterid"))
     
-   cse <- coeftest(plm, vcov=vcovHC(plm, type="sss", cluster="group"))
+   cse <- coeftest(plm_fit, vcov=vcovHC(plm_fit, type="sss", cluster="group"))
    # doesn't have F statistic right now
    # no cse on plm_cov
     
