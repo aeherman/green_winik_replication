@@ -11,7 +11,7 @@ liml <- function(Y,D,Z,X,intercept=TRUE,
   
   # Error checking: check Y and D
   if( (!is.vector(Y) && !is.matrix(Y) && !is.data.frame(Y)) || (is.matrix(Y) && ncol(Y) != 1) || (is.data.frame(Y) && ncol(Y) != 1) || (!is.numeric(Y))) stop("Y is not a numeric vector.")
-  if( (!is.vector(D) && !is.matrix(D) && !is.data.frame(Y)) || (is.matrix(D) && ncol(D) != 1) || (is.data.frame(D) && ncol(D) != 1) || (!is.numeric(D))) stop("D is not a numeric vector.")
+  if( (!is.vector(D) && !is.matrix(D) && !is.data.frame(D)) || (is.matrix(D) && ncol(D) != 1) || (is.data.frame(D) && ncol(D) != 1) || (!is.numeric(D))) stop("D is not a numeric vector.")
   Y = as.numeric(Y); D = as.numeric(D)
   if(length(Y) != length(D)) stop("Dimension of Y and D are not the same!")
   
