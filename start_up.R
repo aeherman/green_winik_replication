@@ -2,7 +2,7 @@ library(tidyverse)
 library(AER)
 library(ivmodel)
 library(plm) # OLS iv regression
-source("liml.R")
+source("functions/liml.R")
 
 X <- readr::read_csv("data/green_winik_data.csv") %>%
   mutate(across(ends_with("date"), ~as.Date(., "%m/%d/%Y"), .names = "{col}_"))
