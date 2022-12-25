@@ -151,14 +151,24 @@ regressed <- out %>%
 # anderson-rubin test
 
 library(boot)
-boot(X, statistic = with(data = X, ivmodel(Y = laterarr, D = toserve, Z = as.factor(calendar), k = 1, clusterID = clusterid)), 2)
+#boot(X, statistic = with(data = X, ivmodel(Y = laterarr, D = toserve, Z = as.factor(calendar), k = 1, clusterID = clusterid)), 2)
 
-outreg <- with(sample(X, 500, replace = T), ivmodel(Y = laterarr, D = toserve, Z = as.factor(calendar),
-                          X = exogenous,
-                          k = 1,
-                          manyweakSE = T, clusterID = clusterid))
+outreg <- ivmodel(Y = X$laterarr, D = X$toserve, Z = as.factor(rank_toserve), #X = exogenous,
+                  k = 0, clusterID = clusterid)
 
-#ARsens.power(nrow(X), ncol(exogenous), gamma = outreg$LIML$point.est, Zadj_sq = outreg$Zadj)
+outreg$kClass
+ARsens.power(n = nrow(X), # sample size
+             k = ncol(exogenous), # exogenous variables
+             beta = 1,
+             gamma = outreg$LIML$point.est, # coefficient
+             Zadj_sq = var(rank_toserve), # question
+             sigmau = outreg$LIML$std.err, #
+             rho = .5, # assumption
+             sigmav = outreg$kClass$std.err, # first stage SE, regular OLS when k = 0
+             alpha = 0.05, deltarange = c(-0.5, 0.5)
+             )
+
+
 point.est <- lapply(outreg$LIML, as.vector)[c("point.est", "p.value")] %>% reduce(cbind)
 lapply(seq(-0.5, 0.5, 0.01), function(x) {
   output <- AR.test(outreg, beta0 = x)
@@ -169,6 +179,8 @@ lapply(seq(-0.5, 0.5, 0.01), function(x) {
   #geom_ribbon(aes(x = h0, ymin = cil, ymax = ciu)) + # the ci of the original point estimate
   geom_line(aes(x = h0, y = p.value)) +
   geom_hline(aes(yintercept = 0.05), color = "red") +
-  geom_vline(aes(xintercept = point.est[1]), color = "green")
+  geom_vline(aes(xintercept = point.est[1]), color = "green") +
+  geom_vline(aes(xintercept = 0))
 
 # very confidently reject that the coefficient is negative
+X$incarc
