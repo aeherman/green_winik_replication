@@ -69,43 +69,51 @@ X %>% #group_by(calendar) %>% count(toserve) %>%
   ggplot(aes(x = toserve, fill = calendar, group = calendar)) + geom_histogram() +
   facet_grid(calendar ~ .)
 
-X %>% filter(toserve > 0) %>% group_by(calendar) %>%
-  mutate(mean = mean(toserve)) %>% ungroup %>%
-  group_by(calendar) %>% arrange(mean) %>%
-  filter(toserve < 50) %>%
-  ggplot(aes(x = toserve, y = as.factor(mean), fill = as.factor(calendar), group = calendar)) +
-  ggridges::geom_density_ridges(scale = 2, alpha = 0.80, quantile_lines = T, quantile_fun = mean)
+
+en_vars <- c("toserve", "probat", "incarc")
+X %>%
+  group_by(calendar) %>%
+  mutate(across(all_of(en_vars), mean, .names = "{col}_mean")) %>%
+  select(calendar, all_of(en_vars), ends_with("_mean")) %>%
+  pivot_longer(all_of(en_vars), names_to = "sentence", values_to = "length") %>%
+  ggplot() +
+  ggridges::geom_density_ridges(
+    aes(x = length, y = reorder(as.factor(calendar), toserve_mean), fill = sentence),
+    scale = 1.2, alpha = 0.50, quantile_lines = T, quantile_fun = median) +
+  xlim(0, NA) +
+  facet_grid(. ~ sentence, scales = "free", space = "free") +
+  scale_x_continuous(n.breaks = 4, limits = c(0, NA)) +
+  theme(legend.position = "none") +
+  ylab("Calendar\n") + xlab("\nLength")
   
-
-ggplot(X %>% filter(toserve > 0),
-       aes(x = toserve, y = as.factor(calendar), fill = as.factor(calendar)), group = calendar) +
-  ggridges::geom_density_ridges(scale = 2, alpha = 0.80, panel_scaling = TRUE,
-                                quantile_lines = T, quantile_fun = mean) +
-  ylab(NULL) + xlab(NULL) + scale_fill_discrete(NULL)
-
 #### table 4 ####
 ## regressions and tests of linear hypotheses of outcomes on covariates with some different empirical specifications (all Ordinary Least Squares)
 covariates <- paste(colnames(exogenous), collapse = ' + ')
-
+calendars <- paste0('calendar', 1:9, collapse = ' + ')
 
 ftest <- function(x, cov = NULL, d = subset(X, incjudge == 1)) {
-  form <- glue::glue("{x} ~ as.factor(calendar)")
+  form <- glue::glue("{x} ~ {calendars}")
   hascov <- "no"
   
   if(!is.null(cov)) {
     form <- glue::glue("{form} + {cov}")
     hascov <- "yes"
   }
-  
-  f <- summary(lm(formula(form), data = d))$fstatistic
+  s <- summary(lm(formula(form), data = d))
+  f <- s$fstatistic
   p <- pf(f[1], f[2], f[3], lower.tail = F)
   
-  return(c(depvar = x, hascov = hascov, signif(f, 4), pvalue = signif(p, 4)))
+  return(list(output = c(depvar = x, hascov = hascov, signif(f, 4), pvalue = signif(p, 4)),
+              summary = s))
 }
 
-table4 <- bind_rows(lapply(c("incarcerate", "toserve", "probatnonzero", "probat"), function(x) ftest(x)),
-          lapply(c("incarcerate", "toserve", "probatnonzero", "probat"), function(x) ftest(x, cov = covariates)))
+table4 <- bind_rows(lapply(c("incarcerate", "toserve", "probatnonzero", "probat"), function(x) ftest(x)$output),
+          lapply(c("incarcerate", "toserve", "probatnonzero", "probat"), function(x) ftest(x, cov = covariates)$output))
 table4
+
+ftest("toserve")$summary
+summary(lm(formula(glue::glue("toserve ~ {calendars}")), X))$coef %>% as_tibble %>% mutate(calendar = 1:9) %>%
+  arrange(Estimate)
 # weak instrument
 
 # table 5 #/  ## instrumental variables estimation -- vector of calendar dummies are instruments; toserve and sometimes probat are endogenous explanatory variables, depending on specifications; robust standard errors are clustered on the clusterid var.  
@@ -115,7 +123,7 @@ calendars <- paste0('calendar', 1:9, collapse = ' + ')
 # calendars are confounded with length of sentence, which can't be randomly assigned, but calendar only affects y through x
 # adding the covariates checks the assumptions?
 covariates <- paste(colnames(exogenous), collapse = ' + ')
-formulas <- c("toserve + suspend + probat", "toserve", "suspend", "probat", "incarcerate", "release")
+formulas <- c("toserve + suspend + probat", "toserve", "suspend", "probat", "incarcerate")
 #ivmodel better?
 ivregs <- lapply(setNames(formulas, formulas),
                  function(x) {
