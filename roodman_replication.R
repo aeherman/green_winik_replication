@@ -103,4 +103,4 @@ AR <- lapply(seq(-0.5, 0.5, 0.01), function(x) {
   geom_vline(aes(xintercept = 0)) +
   ggtitle("One-dimensional Graphical Anderson-Rubin Test") +
   xlab("Values for the null hypothesis")
-ggsave("data/replicated/roodman_AR_test.png", width = 7, height = 6)
+ggsave("data/replicated/roodman_AR_test.png", width = 7, height = 5)
