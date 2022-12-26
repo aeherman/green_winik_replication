@@ -2,6 +2,7 @@ library(tidyverse)
 library(AER)
 library(ivmodel)
 library(plm) # OLS iv regression
+library(tseries)
 source("functions/liml.R")
 
 X <- readr::read_csv("data/green_winik_data.csv") %>%
@@ -28,8 +29,5 @@ rank_harshness <- function(m) {
 
 rank_toserve <- match(calendar, rank_harshness("toserve")$calendar)
 rank_probat <- match(calendar, rank_harshness("probat")$calendar)
-
-X %>% filter(probat+toserve != incarc) %>%
-  select(probat,toserve, incarc)
 
 theme_set(ggthemes::theme_tufte(ticks = F))
