@@ -68,6 +68,7 @@ regressed %>% ggplot() +
   xlab("\nFollow-up Interval\n(days since a defendant's initial disposition)") +
   ggtitle("Marginal impact of increasing follow-up interval on\nestimating the marginal effect of\n1 month of incarceration on recidivism")
 
+ggsave("data/replicated/roodman_sensitivity_plot.png", width = 7, height = 4)
 
 # question: is toserve not the orginal sentence?
 ## suspension is part of the original sentencing
@@ -90,7 +91,7 @@ outreg <- ivmodel(Y = X$laterarr, D = X$toserve, Z = as.factor(calendar), X = ex
 
 
 point.est <- lapply(outreg$LIML, as.vector)[c("point.est", "p.value")] %>% reduce(cbind)
-lapply(seq(-0.5, 0.5, 0.01), function(x) {
+AR <- lapply(seq(-0.5, 0.5, 0.01), function(x) {
   output <- AR.test(outreg, beta0 = x)
   tibble(h0 = x, p.value = output$p.value, cil = output$ci[1], ciu = output$ci[2])}
   ) %>%
