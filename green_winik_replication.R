@@ -27,7 +27,6 @@ table3 <- X %>% select(calendar, all_of(endogenous)) %>%
     janitor::row_to_names(1, remove_rows_above = FALSE)
 
 table3 <- bind_cols(endogenous = rownames(table3), as_tibble(table3))
-kableExtra::kable(table3)
 #with(X, do.call(cbind, tapply(toserve, calendar, function(x) c(M = mean(x), SD = sd(x)))))
 #group_by(X, calendar) %>% summarize(M = mean(toserve), SD = sd(toserve))
 
@@ -90,8 +89,10 @@ ivregs <- lapply(setNames(formulas, formulas),
                 cse = cse))
 })
 
-table5 <- ivregs$toserve$plm_cov
-stargazer::stargazer(table5, output = "outreg_tsls_laterarr_toserve.png")
+table7a <- ivregs$toserve$plm_cov
+stargazer::stargazer(table7a, out = "outreg_tsls_laterarr_toserve.tex",type = "text",
+                     dep.var.labels = "",
+                     title="Regression Results: 2SLS")
 
 
 #### table 7 ####
@@ -117,6 +118,6 @@ ivregress <- function(endogenous, outcome = laterarr){
     
     }) %>% reduce(bind_rows)
 }
-table7 <- ivregress("toserve")
+table7b <- ivregress("toserve")
 
-
+save(table3, table4, table7a, table7b, file = "data/replicated/green_winik_tables.rdata")
