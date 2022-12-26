@@ -1,9 +1,7 @@
 source("start_up.R")
 
-# see if behavior changes over time
-# null h0 that non-stationary
-endogenous <- c("toserve", "incarc", "incarcerate", "toserve", "probat", "probatnonzero")
-X %>% select(calendar, all_of(endogenous)) %>%
+# rankings plot
+rankings <- X %>% select(calendar, all_of(endogenous)) %>%
   group_by(calendar) %>% summarize(across(all_of(endogenous), ~signif(mean(.), 3))) %>%
   mutate(across(all_of(endogenous), ~signif(./max(.), 3))) %>%
   pivot_longer(all_of(endogenous), names_to = "en_var", values_to = "length") %>%
@@ -15,6 +13,7 @@ X %>% select(calendar, all_of(endogenous)) %>%
             show.legend = F, nudge_x = .3, segment.lty = "dotted", alpha = 0.5) +
   ggtitle("Metric disagreement in ranking calendars") +
   theme(legend.position = "none")
+rankings
 
 outliers <- X %>% filter(calendar == 2) %>% select(calendar, incarc) %>%
   #pivot_longer(c("incarc", "toserve"), names_to = "sentence", values_to = "length") %>%
@@ -29,41 +28,36 @@ outliersp <- outliers %>%
   #geom_point(aes(x = 324, y = 23), inherit.aes = F)
 
 
-en_vars <- c("toserve", "probat", "incarc", "incarcerate", "probatnonzero")
 longer <- X %>% mutate(disp_yearmon = as.yearmon(dispdate_)) %>%
-  group_by(calendar, disp_yearmon) %>% summarize(across(all_of(en_vars), ~mean(.))) %>%
-  pivot_longer(all_of(en_vars), names_to = "sentence", values_to = "length")
+  group_by(calendar, disp_yearmon) %>% summarize(across(all_of(endogenous), ~mean(.))) %>%
+  pivot_longer(all_of(endogenous), names_to = "sentence", values_to = "length")
 
 longer_outliers <- X %>% mutate(disp_yearmon = as.yearmon(dispdate_)) %>%
   filter(!(calendar == 2 & incarc == 324)) %>%
-  group_by(calendar, disp_yearmon) %>% summarize(across(all_of(en_vars), ~mean(.))) %>%
-  pivot_longer(all_of(en_vars), names_to = "sentence", values_to = "length")
+  group_by(calendar, disp_yearmon) %>% summarize(across(all_of(endogenous), ~mean(.))) %>%
+  pivot_longer(all_of(endogenous), names_to = "sentence", values_to = "length")
   
 # as many as four per day
-lapply(unique(longer$sentence), function(type) {
+adf <- lapply(unique(longer$sentence), function(type) {
   out <- adf.test(longer$length[longer$sentence == type])
   bind_cols(variable = type, out[c(1, 4, 3)])
 }) %>% reduce(bind_rows)
+adf
 
-longer %>% 
+ts <- longer %>% 
   ggplot(aes(x = disp_yearmon, y = length, color = as.factor(calendar))) +
   
   geom_vline(xintercept = c(as.yearmon(c("Jan 2003", "Jan 2004"))), lty = "dotted") +
   geom_smooth(aes(fill = as.factor(calendar)), lty = "dotted", alpha = 0.2, method = "glm") +
-  #geom_line() +
-  #geom_smooth() +
   facet_wrap(sentence ~ ., scales = "free") +
   ggtitle("Sentencing behaviors over time for each measure of harshness") +
   ylab("Mean Value\n") + xlab("\nMonth") + theme(legend.position = "bottom")
 
-longer_outliers %>% filter(sentence == "incarc") %>%
+ts_incarc <- longer_outliers %>% filter(sentence == "incarc") %>%
   ggplot(aes(x = disp_yearmon, y = length, color = as.factor(calendar))) +
   
   geom_vline(xintercept = c(as.yearmon(c("Jan 2003", "Jan 2004"))), lty = "dotted") +
   geom_smooth(aes(fill = as.factor(calendar)), lty = "dotted", alpha = 0.2, method = "glm") +
-  #geom_line() +
-  #geom_smooth() +
-  #facet_wrap(sentence ~ ., scales = "free") +
   ggtitle("Sentencing behaviors over time for each measure of harshness",
           subtitle = "23 outlying observations of 324 months removed") +
   ylab("Mean Value\n") + xlab("\nMonth") + theme(legend.position = "bottom")
