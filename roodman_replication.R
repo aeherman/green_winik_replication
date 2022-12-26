@@ -20,11 +20,13 @@ change_index <- expanded %>% count(end, laterarr2) %>% filter(laterarr2 == 0) %>
   # attempt a plot to visualize what this means
   summarize(end = max(end), min_end = min(end), n = n()) %>% arrange(end)
 
+# visualize sample of change_index
 change_index %>%
   filter(end < 50) %>%
   ggplot(aes(x = end, y = n)) + geom_step() +
   ggtitle("Example of the change index")
 
+# prepare for running the computationally heavy data
 listed <- expanded %>% group_by(end) %>% group_split
 
 library(doParallel)
@@ -35,7 +37,6 @@ out <- map2(.x = listed[(change_index$end - 1)], # unique versions of the data g
      .y = change_index$n, # keep track of how many days the cumulative laterarr2 remains the same
      .f = function(x, n) {
   outreg <- with(x, liml(Y = laterarr2, D = toserve, Z = as.factor(calendar),
-                         # consider adding in the exogenous variables with D
                          X = exogenous,
                          k = 1,
                          manyweakSE = T, clusterID = clusterid))
@@ -49,17 +50,6 @@ regressed <- out %>%
 
 after <- Sys.time()
 after-before
-
-freed <- expanded %>%
-  transmute(end, incarcerate, dispdate_, toserve, suspend,
-            reldate_ = dispdate_ + toserve*30, # estimated, not correct for everything
-            enddate_ = dispdate_ + end, # end of the period of observation
-            laterarrdate_,
-            free = fullreleasetorecid == 9999 & toserve == 0  |
-              reldate_ <= enddate_ & enddate_ < laterarrdate_ & !is.na(laterarrdate_) |
-              reldate_ <= enddate_ & is.na(laterarrdate_),
-            fullreleasetorecid) %>% group_by(end, incarcerate) %>%
-  summarize(free = sum(free)/N) #%>% filter(incarcerate == 1)
 
 regressed %>% ggplot() +
   geom_ribbon(aes(x = end,
@@ -78,27 +68,11 @@ regressed %>% ggplot() +
   xlab("\nFollow-up Interval\n(days since a defendant's initial disposition)") +
   ggtitle("Marginal impact of increasing follow-up interval on\nestimating the marginal effect of\n1 month of incarceration on recidivism")
 
-freed %>% ggplot(aes(x = end, y = free,
-                     color = ifelse(incarcerate == 1,
-                                    "incarcerated or\narrested",
-                                    "released"))) +
-  geom_line() +
-  ggtitle("Proportion of incarcerated subjects released\nin a given follow-up interval") +
-  ylab("Proportion Free or Released\n") +
-  xlab("\nFollow-up Interval\n(days since a defendent's initial disposition)") +
-  scale_y_continuous(labels = scales::percent) +
-  scale_color_discrete(NULL)
 
 # question: is toserve not the orginal sentence?
 ## suspension is part of the original sentencing
 latercondate_
 
-
-
-
-freed %>% ggplot(aes(x = end, y = free)) + geom_line()
-
-freed %>% filter(end > 500)
 
 # question: on what date does the defendant start serving their sentence?
 # fullreleasetorecid = laterarrdate_ - dispdate_ - 30*toserve
