@@ -73,61 +73,18 @@ regressed %>% ggplot() +
 ## suspension is part of the original sentencing
 latercondate_
 
-
 # question: on what date does the defendant start serving their sentence?
 # fullreleasetorecid = laterarrdate_ - dispdate_ - 30*toserve
 # a couple people have estimated release dates that extend beyond their later arrest dates
 ## I will filter them out or just include them
-mean((dispdate_ + toserve) < laterarrdate_, na.rm = T)
-X %>% filter((dispdate_ + toserve) >= laterarrdate_) %>% select(dispdate_, toserve, laterarrdate_, suspend)
-
-X %>% filter(toserve/12<4) %>%
-  mutate(recid = as.numeric(laterarrdate_ - dispdate_) - 30*toserve,
-         fullreleasetorecid = fullreleasetorecid) %>%
-  select(dispdate_, sentdate_, toserve, suspend, laterarr, laterarrdate_, fullreleasetorecid,
-                                      recid, incarcerate)
-
-free = case_when(
-  fullreleasetorecid == 999 & toserve == 0 ~ T, # no incarceration
-  
-)
-
-freedate_ <- dispdate_ + toserve
-
-count(X, toserve == 0, incarcerate == 0)
-
-X %>% group_by(isnasentdate = is.na(sentdate_), iszerotoserve = toserve == 0) %>%
-  filter(isnasentdate, !iszerotoserve) %>% select(sentdate_, dispdate_, toserve, fullreleasetorecid, suspend)
 
 
 date <- str_replace_all(Sys.Date(), pattern = "-", replacement = "_")
 saveRDS(regressed, file = glue::glue("data/replicated/vary_range_any_arrest_{date}.rds"))
 
 
-
-out2 <- map2(.x = listed[(change_index$end - 1)], # unique versions of the data given the above
-            .y = change_index$n, # keep track of how many days the cumulative laterarr2 remains the same
-            .f = function(x, n) {
-              
-              outplm <- plm(formula(glue::glue("laterarr2 ~ toserve + {covariates} |
-                              {covariates} + {calendars}")),
-                            data = x, model = "pooling", subset = incjudge == 1,
-                            index = c("clusterid"))
-              cse <- coeftest(outplm, vcov=vcovHC(outplm, type="sss", cluster="group"))
-              do.call(bind_cols, lapply(outreg[1:5], as.vector)) %>%
-                # repeat the vari
-                replicate(n, ., simplify = F) # repeat the results for each day it was the same
-            }) %>% reduce(bind_rows)
-regressed <- out %>%
-  # add back in the associated range of days
-  bind_cols(end = unique(expanded$end)[1:nrow(out)])
-
-
 # anderson-rubin test
-
-library(boot)
-#boot(X, statistic = with(data = X, ivmodel(Y = laterarr, D = toserve, Z = as.factor(calendar), k = 1, clusterID = clusterid)), 2)
-
+# consider boot test
 outreg <- ivmodel(Y = X$laterarr, D = X$toserve, Z = as.factor(calendar), X = exogenous,
                   k = 0, clusterID = clusterid)
 
