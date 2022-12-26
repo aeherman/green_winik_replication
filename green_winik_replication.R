@@ -90,7 +90,8 @@ ivregs <- lapply(setNames(formulas, formulas),
 })
 
 table7a <- ivregs$toserve$plm_cov
-stargazer::stargazer(table7a, out = "outreg_tsls_laterarr_toserve.tex",type = "text",
+stargazer::stargazer(table7a, out = "data/replicated/green_tsls_laterarr_toserve.tex",
+                     type = "latex",
                      dep.var.labels = "",
                      title="Regression Results: 2SLS")
 
