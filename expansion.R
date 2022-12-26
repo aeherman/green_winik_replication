@@ -67,3 +67,21 @@ longer_outliers %>% filter(sentence == "incarc") %>%
   ggtitle("Sentencing behaviors over time for each measure of harshness",
           subtitle = "23 outlying observations of 324 months removed") +
   ylab("Mean Value\n") + xlab("\nMonth") + theme(legend.position = "bottom")
+
+
+en_vars <- c("toserve", "probat", "incarc")
+X %>%
+  group_by(calendar) %>%
+  mutate(across(all_of(en_vars), mean, .names = "{col}_mean")) %>%
+  select(calendar, all_of(en_vars), ends_with("_mean")) %>%
+  pivot_longer(all_of(en_vars), names_to = "sentence", values_to = "length") %>%
+  ggplot() +
+  ggridges::geom_density_ridges(
+    aes(x = length, y = reorder(as.factor(calendar), toserve_mean), fill = sentence),
+    scale = 1.2, alpha = 0.50, quantile_lines = T, quantile_fun = median) +
+  xlim(0, NA) +
+  facet_grid(. ~ sentence, scales = "free_x", space = "free_x") +
+  scale_x_continuous(n.breaks = 4, limits = c(0, NA)) +
+  theme(legend.position = "none") +
+  ylab("Calendar\n") + xlab("\nLength") + ggtitle("Distribution of Continuous Treatment Variables") +
+  geom_vline(aes(xintercept = 50))
