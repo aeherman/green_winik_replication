@@ -22,7 +22,8 @@ change_index <- expanded %>% count(end, laterarr2) %>% filter(laterarr2 == 0) %>
 
 change_index %>%
   filter(end < 50) %>%
-  ggplot(aes(x = end, y = n)) + geom_step()
+  ggplot(aes(x = end, y = n)) + geom_step() +
+  ggtitle("Example of the change index")
 
 listed <- expanded %>% group_by(end) %>% group_split
 
@@ -153,20 +154,8 @@ regressed <- out %>%
 library(boot)
 #boot(X, statistic = with(data = X, ivmodel(Y = laterarr, D = toserve, Z = as.factor(calendar), k = 1, clusterID = clusterid)), 2)
 
-outreg <- ivmodel(Y = X$laterarr, D = X$toserve, Z = as.factor(rank_toserve), #X = exogenous,
+outreg <- ivmodel(Y = X$laterarr, D = X$toserve, Z = as.factor(calendar), X = exogenous,
                   k = 0, clusterID = clusterid)
-
-outreg$kClass
-ARsens.power(n = nrow(X), # sample size
-             k = ncol(exogenous), # exogenous variables
-             beta = 1,
-             gamma = outreg$LIML$point.est, # coefficient
-             Zadj_sq = var(rank_toserve), # question
-             sigmau = outreg$LIML$std.err, #
-             rho = .5, # assumption
-             sigmav = outreg$kClass$std.err, # first stage SE, regular OLS when k = 0
-             alpha = 0.05, deltarange = c(-0.5, 0.5)
-             )
 
 
 point.est <- lapply(outreg$LIML, as.vector)[c("point.est", "p.value")] %>% reduce(cbind)
@@ -180,7 +169,6 @@ lapply(seq(-0.5, 0.5, 0.01), function(x) {
   geom_line(aes(x = h0, y = p.value)) +
   geom_hline(aes(yintercept = 0.05), color = "red") +
   geom_vline(aes(xintercept = point.est[1]), color = "green") +
-  geom_vline(aes(xintercept = 0))
-
-# very confidently reject that the coefficient is negative
-X$incarc
+  geom_vline(aes(xintercept = 0)) +
+  ggtitle("One-dimensional Graphical Anderson-Rubin Test") +
+  xlab("Values for the null hypothesis")
