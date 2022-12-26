@@ -72,7 +72,6 @@ ggsave("data/replicated/roodman_sensitivity_plot.png", width = 7, height = 4)
 
 # question: is toserve not the orginal sentence?
 ## suspension is part of the original sentencing
-latercondate_
 
 # question: on what date does the defendant start serving their sentence?
 # fullreleasetorecid = laterarrdate_ - dispdate_ - 30*toserve
@@ -104,3 +103,4 @@ AR <- lapply(seq(-0.5, 0.5, 0.01), function(x) {
   geom_vline(aes(xintercept = 0)) +
   ggtitle("One-dimensional Graphical Anderson-Rubin Test") +
   xlab("Values for the null hypothesis")
+ggsave("data/replicated/roodman_AR_test.png", width = 7, height = 6)
