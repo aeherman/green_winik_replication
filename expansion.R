@@ -8,12 +8,13 @@ rankings <- X %>% select(calendar, all_of(endogenous)) %>%
   group_by(en_var) %>% arrange(en_var, length) %>% mutate(rank = row_number()) %>%
   ggplot(aes(x = en_var, y = length, group = calendar, color = as.factor(calendar))) +
   geom_point() + geom_path(show.legend = F)  +
-  ylab("Harshness Ranking\n") + xlab("Sentence Severity Measures") +
+  ylab("Mean Value (indicating ranking)\n") + xlab("\nSentence Severity Measures") +
   ggrepel::geom_text_repel(aes(label = ifelse(en_var == "toserve", calendar, NA_character_)),
             show.legend = F, nudge_x = .3, segment.lty = "dotted", alpha = 0.5) +
   ggtitle("Metric disagreement in ranking calendars") +
   theme(legend.position = "none")
-rankings
+ggsave(filename = "data/replicated/herman_rankings.png", rankings, width = 7, height = 5, type = 
+         "times")
 
 outliers <- X %>% filter(calendar == 2) %>% select(calendar, incarc) %>%
   #pivot_longer(c("incarc", "toserve"), names_to = "sentence", values_to = "length") %>%
@@ -26,6 +27,7 @@ outliersp <- outliers %>%
   geom_density(aes(x = incarc), alpha = 0.5) +
   ggtitle("Density distribution of 'incarc' in calendar 2") + xlab("\n Months of Incarceration Sentence") #+
   #geom_point(aes(x = 324, y = 23), inherit.aes = F)
+ggsave(file = "data/replicated/herman_outliers_incarc.png", outliersp, height = 5, width = 7)
 
 
 longer <- X %>% mutate(disp_yearmon = as.yearmon(dispdate_)) %>%
@@ -51,7 +53,10 @@ ts <- longer %>%
   geom_smooth(aes(fill = as.factor(calendar)), lty = "dotted", alpha = 0.2, method = "glm") +
   facet_wrap(sentence ~ ., scales = "free") +
   ggtitle("Sentencing behaviors over time for each measure of harshness") +
-  ylab("Mean Value\n") + xlab("\nMonth") + theme(legend.position = "bottom")
+  ylab("Mean Value\n") + xlab("\nMonth") + theme(legend.position = "bottom") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggsave("data/replicated/herman_time_series.png", ts, width = 8, height = 6)
 
 ts_incarc <- longer_outliers %>% filter(sentence == "incarc") %>%
   ggplot(aes(x = disp_yearmon, y = length, color = as.factor(calendar))) +
@@ -61,7 +66,7 @@ ts_incarc <- longer_outliers %>% filter(sentence == "incarc") %>%
   ggtitle("Sentencing behaviors over time for each measure of harshness",
           subtitle = "23 outlying observations of 324 months removed") +
   ylab("Mean Value\n") + xlab("\nMonth") + theme(legend.position = "bottom")
-
+ggsave(file = "data/replicated/herman_time_series_incarc.png", ts_incarc, width = 7, height = 5)
 
 en_vars <- c("toserve", "probat", "incarc")
 X %>%
