@@ -25,10 +25,10 @@ prisonlevel[((toserve > 36 & incjudge == 1))] <- 4
 table(prisonlevel)/N
 
 # Table 1:
-t = table(probatlevel,prisonlevel)
-t = cbind(t, apply(t, 1, sum))
-t = rbind(t, apply(t, 2, sum))
-t
+table1 = table(probatlevel,prisonlevel)
+table1 = cbind(t, apply(t, 1, sum))
+table1 = rbind(t, apply(t, 2, sum))
+table1
 
 #### table 2 ####
 #summarizes exogenous variables overall, and by calendar
@@ -47,28 +47,24 @@ table_2_reg <- lapply(setNames(colnames(exogenous), colnames(exogenous)), functi
     chi <- chisq.test(X %>% select(calendar, all_of(var)), simulate.p.value = T, B=1000)$p.value
     return(list(reg = reg, chi = chi))
 })
+
 lapply(table_2_reg, function(var) var$chi)
+
 
 #chisq.test(X %>% select(agesq), simulate.p.value = T, B = 1000)$p.value
 # age, agesq, nonblack, check dist. later
 
 #### table 3 ####
 # table 3 #/  ## summarizes endogenous variables by calendar
-endogenous <- c("laterarr", "incarcerate", "toserve", "probat", "probatnonzero")
+endogenous <- c("laterarr", "toserve", "incarc", "incarcerate", "toserve", "probat", "probatnonzero")
 table3 <- X %>% select(calendar, all_of(endogenous)) %>%
     group_by(calendar) %>% summarize(across(all_of(endogenous), ~signif(mean(.), 3))) %>% t %>%
     janitor::row_to_names(1, remove_rows_above = FALSE)
+rownames(table3)[c(1, 4, 6)] <- glue::glue("{rownames(table3)[c(1, 4, 6)]} (binary)")
 table3
 
-with(X, do.call(cbind, tapply(toserve, calendar, function(x) c(M = mean(x), SD = sd(x)))))
-
-group_by(X, calendar) %>% summarize(M = mean(toserve), SD = sd(toserve))
-
-
-X %>% #group_by(calendar) %>% count(toserve) %>%
-  ggplot(aes(x = toserve, fill = calendar, group = calendar)) + geom_histogram() +
-  facet_grid(calendar ~ .)
-
+#with(X, do.call(cbind, tapply(toserve, calendar, function(x) c(M = mean(x), SD = sd(x)))))
+#group_by(X, calendar) %>% summarize(M = mean(toserve), SD = sd(toserve))
 
 en_vars <- c("toserve", "probat", "incarc")
 X %>%
@@ -81,10 +77,22 @@ X %>%
     aes(x = length, y = reorder(as.factor(calendar), toserve_mean), fill = sentence),
     scale = 1.2, alpha = 0.50, quantile_lines = T, quantile_fun = median) +
   xlim(0, NA) +
-  facet_grid(. ~ sentence, scales = "free", space = "free") +
+  facet_grid(. ~ sentence, scales = "free_x", space = "free_x") +
   scale_x_continuous(n.breaks = 4, limits = c(0, NA)) +
   theme(legend.position = "none") +
-  ylab("Calendar\n") + xlab("\nLength")
+  ylab("Calendar\n") + xlab("\nLength") + ggtitle("Distribution of Continuous Treatment Variables") +
+  geom_vline(aes(xintercept = 50))
+
+X %>% mutate(disp_yearmon = as.yearmon(dispdate_)) %>%
+  group_by(calendar, disp_yearmon) %>% summarize(across(en_vars, ~mean(.)),
+                                              #across(en_vars, ~rollmean(., 3))
+                                              ) %>%
+  pivot_longer(all_of(en_vars), names_to = "sentence", values_to = "length") %>%
+  ggplot(aes(x = disp_yearmon, y = length, color = sentence)) +
+  geom_vline(xintercept = c(as.yearmon(c("Jan 2003", "Jan 2004")))) +
+  geom_line() +
+  #geom_smooth() +
+  facet_wrap(calendar ~ ., scales = "free_y")
   
 #### table 4 ####
 ## regressions and tests of linear hypotheses of outcomes on covariates with some different empirical specifications (all Ordinary Least Squares)
